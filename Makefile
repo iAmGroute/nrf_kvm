@@ -70,7 +70,7 @@ FILES_CPP = \
 
 
 .PHONY: default
-default: rebuild
+default: all
 
 # Object files, corresponding to the input files
 OBJECTS_S   = $(FILES_S:.s=.s.o)
@@ -119,8 +119,12 @@ build.hex: build.elf
 	$(OBJCOPY) "build/build.elf" -O ihex   "build/build.hex"
 
 # Convert to plain binary format
-build.bin: build.elf
-	$(OBJCOPY) "build/build.elf" -O binary "build/build.bin"
+build.bin: build.hex
+	objcopy -I ihex "build/build.hex" -O binary "build/build.bin"
+	# This produces a bin of the entire flash space (512 MiB, padded with zeros)
+	# $(OBJCOPY) "build/build.elf" -O binary "build/build.bin"
+	# This produces wrong output when the hex file skips addresses
+	# $(OBJCOPY) -I ihex "build/build.hex" -O binary "build/build.bin"
 
 # Main target !
 
@@ -135,6 +139,6 @@ clean:
 	mkdir -p build/
 
 # Rebuild
-.PHONY: rebuild
-rebuild: clean all
+.PHONY: re
+re: clean all
 
