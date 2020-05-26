@@ -1,9 +1,10 @@
 
 # Command options
 
-CC1    = clang-9 -cc1
-CC1AS  = clang-9 -cc1as
-LINKER = /usr/share/segger_embedded_studio_for_arm_4.52c/bin/segger-ld
+CC1     = clang-9 -cc1
+CC1AS   = clang-9 -cc1as
+LINKER  = /usr/share/segger_embedded_studio_for_arm_4.52c/bin/segger-ld
+OBJCOPY = llvm-objcopy-9
 
 TARGET = \
 	-triple thumbv6m-none-eabi \
@@ -86,17 +87,22 @@ OBJECTS     = $(OBJECTS_S) $(OBJECTS_CPP)
 %_PP.cpp: %.cpp
 	mkdir -p "build/$(@D)"
 	# Output all '#defines' only
-	$(CC1) $(TARGET) -x c++ -std=c++11 $(DEFINES) $(INCLUDES) -E -dM "$<" -o "build/$@"
+	$(CC1) $(TARGET) $(CC1_OPTIONS) -x c++ -std=c++11 $(DEFINES) $(INCLUDES) -E -dM "$<" -o "build/$@.h"
 	# Output the preprocessed file
-	$(CC1) $(TARGET) -x c++ -std=c++11 $(DEFINES) $(INCLUDES) -E     "$<" -o "build/$@"
+	$(CC1) $(TARGET) $(CC1_OPTIONS) -x c++ -std=c++11 $(DEFINES) $(INCLUDES) -E     "$<" -o "build/$@"
 
 # Compile .cpp
-%.cpp.o: %_PP.cpp
+%_PP.cpp.s: %_PP.cpp
 	mkdir -p "build/$(@D)"
-	$(CC1) $(TARGET) -x c++ -std=c++11 -Wall -O3 -S "build/$<" -o "build/$@"
+	$(CC1) $(TARGET) $(CC1_OPTIONS) -x c++ -std=c++11 -Wall -O3 -S "build/$<" -o "build/$@"
 
-# Assemble
+# Assemble .s
 %.s.o: %_PP.s
+	mkdir -p "build/$(@D)"
+	$(CC1AS) $(TARGET) "build/$<" -filetype "obj" -o "build/$@"
+
+# Assemble .cpp
+%.cpp.o: %_PP.cpp.s
 	mkdir -p "build/$(@D)"
 	$(CC1AS) $(TARGET) "build/$<" -filetype "obj" -o "build/$@"
 
@@ -105,15 +111,21 @@ build.ind:
 	printf '"build/%s"\n' $(OBJECTS) > "build/build.ind"
 
 # Link
-.PHONY: link
-link: build.ind $(OBJECTS)
+build.elf: build.ind $(OBJECTS)
 	$(LINKER) $(LINKER_OPTIONS) -Map "build/build.map" -o "build/build.elf" "@build/build.ind"
 
+# Convert to Intel hex format
+build.hex: build.elf
+	$(OBJCOPY) "build/build.elf" -O ihex   "build/build.hex"
+
+# Convert to plain binary format
+build.bin: build.elf
+	$(OBJCOPY) "build/build.elf" -O binary "build/build.bin"
 
 # Main target !
 
 .PHONY: all
-all: link
+all: build.elf build.hex build.bin
 
 
 # Cleanup
