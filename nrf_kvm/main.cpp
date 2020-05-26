@@ -1,5 +1,5 @@
 
-#define nrf_delay_us(us_time) NRFX_DELAY_US(us_time)
+#define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
 
 void clocks_start()
 {
@@ -14,9 +14,9 @@ int main()
     Board::configPins();
 
     while (1) {
-        nrf_delay_us(1000000);
+        nrf_delay_us(5000000);
         Board::Pin_ChannelSwitch.high();
-        nrf_delay_us(1000000);
+        nrf_delay_us(10000);
         Board::Pin_ChannelSwitch.low();
     }
 }
