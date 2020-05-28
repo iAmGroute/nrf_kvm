@@ -2,6 +2,8 @@
 
 #pragma once
 
+void NOP() {}
+
 // Get bit VALue
 #define VAL(word, position)            ((word) &  (1UL << (position)))
 // Set Bit In
