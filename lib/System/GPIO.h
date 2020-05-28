@@ -16,6 +16,17 @@ namespace GPIO {
         Output = true,
     };
 
+    enum struct Strength {
+        Standard_Low_Standard_High = GPIO_PIN_CNF_DRIVE_S0S1,
+        Strong_Low_Standard_High   = GPIO_PIN_CNF_DRIVE_H0S1,
+        Standard_Low_Strong_High   = GPIO_PIN_CNF_DRIVE_S0H1,
+        Strong_Low_Strong_High     = GPIO_PIN_CNF_DRIVE_H0H1,
+        Open_Low_Standard_High     = GPIO_PIN_CNF_DRIVE_D0S1,
+        Open_Low_Strong_High       = GPIO_PIN_CNF_DRIVE_D0H1,
+        Standard_Low_Open_High     = GPIO_PIN_CNF_DRIVE_S0D1,
+        Strong_Low_Open_High       = GPIO_PIN_CNF_DRIVE_H0D1
+    };
+
     struct Output
     {
         virtual void low() = 0;
@@ -55,10 +66,10 @@ namespace GPIO {
         static NRF_GPIO_Type *getInstance(System::PinNumber pinNumber)
         {
             #ifdef NRF_GPIO
+                #pragma unused(pinNumber)
                 return NRF_GPIO;
             #else
-                u8 num = (u8)pinNumber;
-                return num < P0_PIN_NUM ? NRF_P0 : NRF_P1;
+                return (u8)pinNumber < P0_PIN_NUM ? NRF_P0 : NRF_P1;
             #endif
         }
 
@@ -105,29 +116,33 @@ namespace GPIO {
         }
         void connectInputBuffer()
         {
-            instance->PIN_CNF[position] = SBI(instance->PIN_CNF[position], GPIO_PIN_CNF_INPUT_Pos);
+            instance->PIN_CNF[position] = CBI(instance->PIN_CNF[position], GPIO_PIN_CNF_INPUT_Pos);
         }
         void disconnectInputBuffer()
         {
-            instance->PIN_CNF[position] = CBI(instance->PIN_CNF[position], GPIO_PIN_CNF_INPUT_Pos);
+            instance->PIN_CNF[position] = SBI(instance->PIN_CNF[position], GPIO_PIN_CNF_INPUT_Pos);
         }
         void setInput()
         {
             u32 temp = instance->PIN_CNF[position];
             temp = CBI(temp, GPIO_PIN_CNF_DIR_Pos);
-            temp = SBI(temp, GPIO_PIN_CNF_INPUT_Pos);
+            temp = CBI(temp, GPIO_PIN_CNF_INPUT_Pos);
             instance->PIN_CNF[position] = temp;
         }
         void setOutput()
         {
             u32 temp = instance->PIN_CNF[position];
             temp = SBI(temp, GPIO_PIN_CNF_DIR_Pos);
-            temp = CBI(temp, GPIO_PIN_CNF_INPUT_Pos);
+            temp = SBI(temp, GPIO_PIN_CNF_INPUT_Pos);
             instance->PIN_CNF[position] = temp;
         }
         void setMode(Mode mode)
         {
             mode == Mode::Input ? setInput() : setOutput();
+        }
+        void setStrength(Strength strength)
+        {
+            instance->PIN_CNF[position] = BFI(instance->PIN_CNF[position], GPIO_PIN_CNF_DRIVE_Pos, GPIO_PIN_CNF_DRIVE_Msk, (u32)strength);
         }
     };
 
