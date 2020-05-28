@@ -1,4 +1,6 @@
 
+#include "Board.h"
+
 #define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
 
 void clocks_start()
@@ -14,9 +16,9 @@ int main()
     Board::configPins();
 
     while (1) {
-        nrf_delay_us(5000000);
-        Board::Pin_ChannelSwitch.high();
-        nrf_delay_us(10000);
-        Board::Pin_ChannelSwitch.low();
+        for (u8 i = 0; i < 4; i++) {
+            Board::setChannel(i);
+            nrf_delay_us(500000);
+        }
     }
 }

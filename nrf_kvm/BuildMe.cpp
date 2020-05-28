@@ -5,6 +5,4 @@
 
 #include <lib/Names.h>
 
-#include "Board.h"
-
 #include "main.cpp"
