@@ -1,16 +1,36 @@
+#pragma once
 
-#include "Board.h"
+#include "Common.h"
+#include <lib/System/GPIO.h>
+
+#define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
 
 struct Interface_PS2
 {
-    const Pin clock_pin;
-    const Pin data_pin;
+    System::GPIO::Pin clock_pin;
+    System::GPIO::Pin data_pin;
+    bool streaming = false;
+    u8 packetData[8];
+    u8 packetSize = 0;
+    u8 sendIndex  = 0;
+    u8 sampleRate = 0;
+    u8 resolution = 0;
+    void (Interface_PS2::*task)() = &Interface_PS2::_task;
 
-    Interface_PS2(Pin clock_pin, Pin data_pin)
+    static void configPin(System::GPIO::Pin &pin)
+    {
+        pin.setStrength(System::GPIO::Strength::Standard_Low_Open_High);
+        //pin.setPull(System::GPIO::Pull::Up);
+        pin.high();
+        pin.setOutput();
+        pin.connectInputBuffer();
+    }
+
+    Interface_PS2(System::GPIO::Pin clock_pin, System::GPIO::Pin data_pin)
         : clock_pin(clock_pin), data_pin(data_pin)
     {
-        clock_pin.high();
-        data_pin.high();
+        configPin(clock_pin);
+        configPin(data_pin);
     }
 
     bool pulse() {
@@ -45,11 +65,17 @@ struct Interface_PS2
         return true;
     }
     bool writeByte(u8 data) {
+        // printf("w %x", data);
         bool ok = _writeByte(data);
         if (!ok) data_pin.high();
+        // printf(" %x", ok);
         return ok;
     }
-    void insistWrite(u8 data) { while (!_writeByte(data)) data_pin.high(); }
+    void insistWrite(u8 data) {
+      // printf("insist %x", data);
+      while (!_writeByte(data)) data_pin.high();
+      // printf(" done\n");
+    }
 
     u8 readBit()
     {
@@ -59,8 +85,11 @@ struct Interface_PS2
 
     u8 readByte()
     {
+        // printf("rb");
         while ( data_pin.isHigh()) if (clock_pin.isHigh()) return 0;
+        // printf("+");
         while (clock_pin.isLow());
+        // printf("++");
         u8 data   = 0;
         u8 parity = 1;
         for (u8 i = 0; i < 8; i++) {
@@ -71,10 +100,12 @@ struct Interface_PS2
             }
         }
         u8 temp = readBit();
-        // if (temp != parity) { _print("! Parity mismatch, got: "); _println(temp); }
-        while (readBit() != 0x01); // _println("! Stop bit mismatch");
+        // printf(" %x", data);
+        // if (temp != parity)         printf(" parity mismatch");
+        // while (readBit() != 0x01) { printf(" stop bit mismatch"); nrf_delay_us(100); }
         writeBit(0);
         data_pin.high();
+        // printf("\n");
         nrf_delay_us(40);
         return data;
     }
@@ -83,63 +114,104 @@ struct Interface_PS2
 
     void reset()
     {
+        // printf("\n---reset---\n");
+        streaming  = false;
+        packetSize = 0;
+        sendIndex  = 0;
+        sampleRate = 0;
+        resolution = 0;
         clock_pin.high();
         data_pin.high();
         nrf_delay_us(1000);
         insistWrite(0xAA);
         insistWrite(0x00);
+        // printf("\n---reseted---\n");
     }
-}
 
-    if (clock_pin.isLow()) {
-        Serial.write('.');
-        // _print("Arb: clk="); _print(r(clk)); _print(", dat="); _print(r(dat)); _println(".");
-        u8 cmd = readByte();
-        if (cmd == 0xFF) {
+    void _respond_sampleRate_1()
+    {
+        // printf("_respond_sampleRate_1\n");
+        if (clock_pin.isLow()) {
+            sampleRate = readByte();
             ack();
-            // _println("! RESETING\n");
+            task = &Interface_PS2::_task;
+        }
+    }
+    void _respond_resolution_1()
+    {
+        // printf("_respond_resolution_1\n");
+        if (clock_pin.isLow()) {
+            resolution = readByte();
+            ack();
+            task = &Interface_PS2::_task;
+        }
+    }
+    void _respond()
+    {
+        // printf("_respond\n");
+        u8 cmd = readByte();
+        if (cmd == 0) return;
+        ack();
+        if (cmd == 0xFF) {
             reset();
-            return;
         }
         else if (cmd == 0xF2) {
-            ack();
-            insistWrite(0x00); // device ID (simple mouse)
+            // get device ID
+            insistWrite(0x00); // (simple mouse)
         }
         else if (cmd == 0xF3) {
-            ack();
-            while (clock_pin.isHigh());
-            readByte(); // sample rate
-            ack();
+            // set sample rate
+            task = &Interface_PS2::_respond_sampleRate_1;
         }
         else if (cmd == 0xE8) {
-            ack();
-            while (clock_pin.isHigh());
-            readByte(); // resolution
-            ack();
+            // set resolution
+            task = &Interface_PS2::_respond_resolution_1;
         }
         else if (cmd == 0xE6) {
             // set scaling 1:1
-            ack();
         }
         else if (cmd == 0xF4) {
             // enable data reporting
-            ack();
-            tosend[2] = 0x00;
-            tosend[1] = delta;
-            tosend[0] = delta;
-            tosendCount = 3;
             sendIndex = 0;
+            streaming = true;
         }
-        else if (cmd == 0) return;
-        else {
-            // _print("\n\n UNKNOWN COMMAND: ");
-            // _printx(cmd);
-            // _println(" ~~~~~~~~~~~~\n\n");
-            // digitalWrite(13, HIGH);
+        else if (cmd != 0) {
+            // unknown command
+            reset();
         }
     }
-    if (tosendCount > 0) {
-        if (sendIndex >= tosendCount) sendIndex = 0;
-        if (writeByte(tosend[sendIndex])) sendIndex += 1;
-        else sendIndex = 0;
+    void _task()
+    {
+        if (clock_pin.isLow()) _respond();
+        else if (packetSize > 0) {
+            // printf("tosend ");
+            bool ok = writeByte(packetData[sendIndex]);
+            // printf("\n");
+            if (ok) {
+                sendIndex += 1;
+                if (sendIndex >= packetSize) {
+                    sendIndex  = 0;
+                    packetSize = 0;
+                }
+            }
+            else {
+                sendIndex = 0;
+                _respond();
+            }
+        }
     }
+
+    bool sendPacket(u8 control, s8 dx, s8 dy)
+    {
+        if (streaming and packetSize == 0) {
+            packetData[0] = control | 0x08
+                          | (dx < 0 ? 0x10 : 0)
+                          | (dy < 0 ? 0x20 : 0);
+            packetData[1] = (u8)dx;
+            packetData[2] = (u8)dy;
+            packetSize    = 3;
+            return true;
+        }
+        return false;
+    }
+};
