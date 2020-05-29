@@ -2,8 +2,8 @@
 
 namespace System {
 
-    enum struct PinNumber : u8 {
-        None  = (u8)~0U,
+    enum struct PinNumber : u32 {
+        None  = (u32)~0U,
         P0_00 =  0,
         P0_01 =  1,
         P0_02 =  2,
@@ -37,6 +37,13 @@ namespace System {
         P0_30 = 30,
         P0_31 = 31
     };
+
+    // The following doesn't work :(
+    // so that's why PinNumber is u32.
+    // operator u32(PinNumber p)
+    // {
+    //     return p == PinNumber::None ? (u32)(~0UL) : (u32)p;
+    // }
 
     constexpr u8 PinCount = 32;
 }
