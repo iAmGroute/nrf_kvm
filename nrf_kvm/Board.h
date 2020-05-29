@@ -1,19 +1,19 @@
 #pragma once
 
 #include <lib/System/GPIO.h>
-
-#define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
+#include "PS2.h"
 
 namespace Board {
     using namespace System;
     using namespace System::GPIO;
 
+    Pin Pin_SerialRX       {PinNumber::P0_09};
+    Pin Pin_SerialTX       {PinNumber::P0_10};
     Pin Pin_Keyboard_Clock {PinNumber::P0_29};
     Pin Pin_Keyboard_Data  {PinNumber::P0_30};
     Pin Pin_Mouse_Clock    {PinNumber::P0_11};
     Pin Pin_Mouse_Data     {PinNumber::P0_12};
     Pin Pin_Switch         {PinNumber::P0_17};
-
     Pin Pin_Channel[4] = {
         Pin {PinNumber::P0_14},
         Pin {PinNumber::P0_16},
@@ -21,22 +21,15 @@ namespace Board {
         Pin {PinNumber::P0_13}
     };
 
-    u8 currentChannel = 0;
+    Interface_PS2 keyboard { Pin_Keyboard_Clock, Pin_Keyboard_Data };
+    Interface_PS2 mouse    { Pin_Mouse_Clock,    Pin_Mouse_Data };
 
-    void configPS2Pin(Pin &pin)
-    {
-        pin.connectInputBuffer();
-        pin.setStrength(Strength::Standard_Low_Open_High);
-        pin.setOutput();
-    }
+    u8 currentChannel = 0;
 
     void configPins()
     {
-        configPS2Pin(Pin_Keyboard_Clock);
-        configPS2Pin(Pin_Keyboard_Data);
-        configPS2Pin(Pin_Mouse_Clock);
-        configPS2Pin(Pin_Mouse_Data);
         Pin_Switch.setInput();
+        Pin_Switch.connectInputBuffer();
         for (u8 i = 0; i < 4; i++) {
             Pin_Channel[i].low();
             Pin_Channel[i].setStrength(Strength::Standard_Low_Strong_High);
