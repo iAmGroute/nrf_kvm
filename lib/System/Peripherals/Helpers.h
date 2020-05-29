@@ -1,8 +1,10 @@
 #pragma once
 
-#include <lib/Naming.h>
+#include <lib/Names.h>
 
-namespace System::Peripherals::Helpers {
+namespace System {
+namespace Peripherals {
+namespace Helpers {
 
     void triggerTask(void *instance, u32 taskOffset)
     {
@@ -31,4 +33,6 @@ namespace System::Peripherals::Helpers {
         return (u32)((u8 *)instance + eventOffset);
     }
 
+}
+}
 }
