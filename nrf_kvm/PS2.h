@@ -3,8 +3,6 @@
 #include "Common.h"
 #include <lib/System/GPIO.h>
 
-#define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
-
 struct Interface_PS2
 {
     System::GPIO::Pin clock_pin;
