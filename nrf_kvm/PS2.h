@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include <lib/System/GPIO.h>
+#include "Debug.h"
 
 struct Interface_PS2
 {
@@ -63,16 +64,16 @@ struct Interface_PS2
         return true;
     }
     bool writeByte(u8 data) {
-        // printf("w %x", data);
+        p('w'); p8(data);
         bool ok = _writeByte(data);
         if (!ok) data_pin.high();
-        // printf(" %x", ok);
+        p8(ok);
         return ok;
     }
     void insistWrite(u8 data) {
-      // printf("insist %x", data);
-      while (!_writeByte(data)) data_pin.high();
-      // printf(" done\n");
+        p('i'); p8(data);
+        while (!_writeByte(data)) data_pin.high();
+        p('-'); p('\n');
     }
 
     u8 readBit()
@@ -83,11 +84,11 @@ struct Interface_PS2
 
     u8 readByte()
     {
-        // printf("rb");
+        p('r');
         while ( data_pin.isHigh()) if (clock_pin.isHigh()) return 0;
-        // printf("+");
+        p('+');
         while (clock_pin.isLow());
-        // printf("++");
+        p('+');
         u8 data   = 0;
         u8 parity = 1;
         for (u8 i = 0; i < 8; i++) {
@@ -98,12 +99,12 @@ struct Interface_PS2
             }
         }
         u8 temp = readBit();
-        // printf(" %x", data);
-        // if (temp != parity)         printf(" parity mismatch");
-        // while (readBit() != 0x01) { printf(" stop bit mismatch"); nrf_delay_us(100); }
+        p8(data);
+        if (temp != parity)         p('p');
+        while (readBit() != 0x01) { p('s'); nrf_delay_us(100); }
         writeBit(0);
         data_pin.high();
-        // printf("\n");
+        p('\n');
         nrf_delay_us(40);
         return data;
     }
@@ -112,7 +113,7 @@ struct Interface_PS2
 
     void reset()
     {
-        // printf("\n---reset---\n");
+        p('r'); p('\n');
         streaming  = false;
         packetSize = 0;
         sendIndex  = 0;
@@ -123,12 +124,11 @@ struct Interface_PS2
         nrf_delay_us(1000);
         insistWrite(0xAA);
         insistWrite(0x00);
-        // printf("\n---reseted---\n");
+        p('R'); p('\n');
     }
 
     void _respond_sampleRate_1()
     {
-        // printf("_respond_sampleRate_1\n");
         if (clock_pin.isLow()) {
             sampleRate = readByte();
             ack();
@@ -137,7 +137,6 @@ struct Interface_PS2
     }
     void _respond_resolution_1()
     {
-        // printf("_respond_resolution_1\n");
         if (clock_pin.isLow()) {
             resolution = readByte();
             ack();
@@ -146,7 +145,7 @@ struct Interface_PS2
     }
     void _respond()
     {
-        // printf("_respond\n");
+        p('_'); p('\n');
         u8 cmd = readByte();
         if (cmd == 0) return;
         ack();
@@ -182,9 +181,9 @@ struct Interface_PS2
     {
         if (clock_pin.isLow()) _respond();
         else if (packetSize > 0) {
-            // printf("tosend ");
+            p('p');
             bool ok = writeByte(packetData[sendIndex]);
-            // printf("\n");
+            p('\n');
             if (ok) {
                 sendIndex += 1;
                 if (sendIndex >= packetSize) {

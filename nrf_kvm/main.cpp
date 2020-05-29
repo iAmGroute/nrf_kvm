@@ -1,6 +1,7 @@
 
 #include "Common.h"
 #include "Board.h"
+#include "Debug.h"
 
 void clocks_start()
 {
@@ -20,7 +21,15 @@ u8 packetIndex = 0;
 int main()
 {
     clocks_start();
-    Board::configPins();
+    Board::init();
+
+    p('\n');
+    p('\n');
+    p('\n');
+    p('\n');
+    p('\n');
+    p('\n');
+    p('\n');
 
     while (1) {
         u8 k = 0;
