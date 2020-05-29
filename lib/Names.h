@@ -21,7 +21,7 @@ typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
 
-typedef u8 byte;
+// typedef u8 byte; // Deprecated
 
 #define K (1000UL)
 #define M (1000ULL * Ki)
@@ -32,3 +32,6 @@ typedef u8 byte;
 #define Mi (1024ULL * Ki)
 #define Gi (1024ULL * Mi)
 #define Ti (1024ULL * Gi)
+
+#define call(object, member_pointer) ((object).*(member_pointer))
+#define asize(a) (sizeof(a) / sizeof(a[0]))
