@@ -1,7 +1,6 @@
 
+#include "Common.h"
 #include "Board.h"
-
-#define nrf_delay_us(us_time) nrfx_coredep_delay_us(us_time)
 
 void clocks_start()
 {

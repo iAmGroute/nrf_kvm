@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common.h"
 #include <lib/System/GPIO.h>
 #include "PS2.h"
 
