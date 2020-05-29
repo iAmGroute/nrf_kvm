@@ -27,6 +27,12 @@ namespace GPIO {
         Strong_Low_Open_High       = GPIO_PIN_CNF_DRIVE_H0D1
     };
 
+    enum struct Pull {
+        Disabled = GPIO_PIN_CNF_PULL_Disabled,
+        Down     = GPIO_PIN_CNF_PULL_Pulldown,
+        Up       = GPIO_PIN_CNF_PULL_Pullup
+    };
+
     struct Output
     {
         virtual void low() = 0;
@@ -106,11 +112,11 @@ namespace GPIO {
         {
             return VAL(instance->IN, position) == 0 ? State::Low : State::High;
         }
-        void setInputFast()
+        void setInput()
         {
             instance->DIRCLR = 1UL << position;
         }
-        void setOutputFast()
+        void setOutput()
         {
             instance->DIRSET = 1UL << position;
         }
@@ -122,20 +128,6 @@ namespace GPIO {
         {
             instance->PIN_CNF[position] = SBI(instance->PIN_CNF[position], GPIO_PIN_CNF_INPUT_Pos);
         }
-        void setInput()
-        {
-            u32 temp = instance->PIN_CNF[position];
-            temp = CBI(temp, GPIO_PIN_CNF_DIR_Pos);
-            temp = CBI(temp, GPIO_PIN_CNF_INPUT_Pos);
-            instance->PIN_CNF[position] = temp;
-        }
-        void setOutput()
-        {
-            u32 temp = instance->PIN_CNF[position];
-            temp = SBI(temp, GPIO_PIN_CNF_DIR_Pos);
-            temp = SBI(temp, GPIO_PIN_CNF_INPUT_Pos);
-            instance->PIN_CNF[position] = temp;
-        }
         void setMode(Mode mode)
         {
             mode == Mode::Input ? setInput() : setOutput();
@@ -143,6 +135,10 @@ namespace GPIO {
         void setStrength(Strength strength)
         {
             instance->PIN_CNF[position] = BFI(instance->PIN_CNF[position], GPIO_PIN_CNF_DRIVE_Pos, GPIO_PIN_CNF_DRIVE_Msk, (u32)strength);
+        }
+        void setPull(Pull pull)
+        {
+            instance->PIN_CNF[position] = BFI(instance->PIN_CNF[position], GPIO_PIN_CNF_PULL_Pos, GPIO_PIN_CNF_PULL_Msk, (u32)pull);
         }
     };
 
