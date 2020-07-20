@@ -11,7 +11,6 @@ struct PS2_Mouse : PS2
     u8 sampleRate = 0;
     u8 resolution = 0;
     u8 cmd        = 0;
-    async (PS2_Mouse::*task)(Async3 *pt3) = &PS2_Mouse::_task;
 
     PS2_Mouse(System::GPIO::Pin clock_pin, System::GPIO::Pin data_pin)
         : PS2(clock_pin, data_pin)
@@ -26,7 +25,6 @@ struct PS2_Mouse : PS2
         sendIndex  = 0;
         sampleRate = 0;
         resolution = 0;
-        task       = &PS2_Mouse::_task;
         clock_pin.high();
         data_pin.high();
         nrf_delay_us(1000);
@@ -36,26 +34,6 @@ struct PS2_Mouse : PS2
         async_end;
     }
 
-    async _respond_sampleRate_1(Async3 *pt3)
-    {
-        async_begin(pt3);
-        if (data_pin.isLow()) {
-            await_call(readByte, &pt3->pt2.pt, sampleRate);
-            await_call(ack,      &pt3->pt2.pt);
-            task = &PS2_Mouse::_task;
-        }
-        async_end;
-    }
-    async _respond_resolution_1(Async3 *pt3)
-    {
-        async_begin(pt3);
-        if (data_pin.isLow()) {
-            await_call(readByte, &pt3->pt2.pt, resolution);
-            await_call(ack,      &pt3->pt2.pt);
-            task = &PS2_Mouse::_task;
-        }
-        async_end;
-    }
     async _respond(Async3 *pt3)
     {
         async_begin(pt3);
@@ -75,7 +53,8 @@ struct PS2_Mouse : PS2
         }
         else if (cmd == 0xF3) {
             // set sample rate
-            task = &PS2_Mouse::_respond_sampleRate_1;
+            await_call(readByte,    &pt3->pt2.pt, sampleRate);
+            await_call(ack,         &pt3->pt2.pt);
         }
         else if (cmd == 0xF2) {
             // get device ID
@@ -83,7 +62,8 @@ struct PS2_Mouse : PS2
         }
         else if (cmd == 0xE8) {
             // set resolution
-            task = &PS2_Mouse::_respond_resolution_1;
+            await_call(readByte,    &pt3->pt2.pt, resolution);
+            await_call(ack,         &pt3->pt2.pt);
         }
         else if (cmd == 0xE6) {
             // set scaling 1:1
@@ -94,7 +74,7 @@ struct PS2_Mouse : PS2
         }
         async_end;
     }
-    async _task(Async3 *pt3)
+    async task(Async3 *pt3)
     {
         if (!async_done(pt3)) return _respond(pt3);
         if (data_pin.isLow()) {

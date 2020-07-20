@@ -49,7 +49,6 @@ struct PS2_Keyboard : PS2
     u8     leds      = 0;
     u8     cmd       = 0;
     Buffer buffer;
-    async (PS2_Keyboard::*task)(Async3 *pt3) = &PS2_Keyboard::_task;
 
     PS2_Keyboard(System::GPIO::Pin clock_pin, System::GPIO::Pin data_pin)
         : PS2(clock_pin, data_pin)
@@ -68,7 +67,6 @@ struct PS2_Keyboard : PS2
         p('r'); p('\n');
         defaults();
         streaming = true;
-        task      = &PS2_Keyboard::_task;
         buffer.init();
         clock_pin.high();
         data_pin.high();
@@ -78,38 +76,6 @@ struct PS2_Keyboard : PS2
         async_end;
     }
 
-    async _respond_typematic_1(Async3 *pt3)
-    {
-        async_begin(pt3);
-        if (data_pin.isLow()) {
-            await_call(readByte, &pt3->pt2.pt, typematic);
-            await_call(ack,      &pt3->pt2.pt);
-            task = &PS2_Keyboard::_task;
-        }
-        async_end;
-    }
-    async _respond_scancodeset_1(Async3 *pt3)
-    {
-        async_begin(pt3);
-        if (data_pin.isLow()) {
-            await_call(readByte, &pt3->pt2.pt, codeset);
-            await_call(ack,      &pt3->pt2.pt);
-            if (codeset == 0) await_call(insistWrite, &pt3->pt2.pt, 2);
-            task = &PS2_Keyboard::_task;
-        }
-        async_end;
-    }
-    async _respond_leds_1(Async3 *pt3)
-    {
-        async_begin(pt3);
-        if (data_pin.isLow()) {
-            await_call(readByte, &pt3->pt2.pt, leds);
-            if (leds & 2) keepChannel = false;
-            await_call(ack,      &pt3->pt2.pt);
-            task = &PS2_Keyboard::_task;
-        }
-        async_end;
-    }
     async _respond(Async3 *pt3)
     {
         async_begin(pt3);
@@ -141,7 +107,8 @@ struct PS2_Keyboard : PS2
         }
         else if (cmd == 0xF3) {
             // set typematic
-            task = &PS2_Keyboard::_respond_typematic_1;
+            await_call(readByte,    &pt3->pt2.pt, typematic);
+            await_call(ack,         &pt3->pt2.pt);
         }
         else if (cmd == 0xF2) {
             // get device ID
@@ -150,7 +117,9 @@ struct PS2_Keyboard : PS2
         }
         else if (cmd == 0xF0) {
             // set scan code set
-            task = &PS2_Keyboard::_respond_scancodeset_1;
+            await_call(readByte,    &pt3->pt2.pt, codeset);
+            await_call(ack,         &pt3->pt2.pt);
+            if (codeset == 0) await_call(insistWrite, &pt3->pt2.pt, 2);
         }
         else if (cmd == 0xEE) {
             // echo
@@ -158,7 +127,8 @@ struct PS2_Keyboard : PS2
         }
         else if (cmd == 0xED) {
             // set LEDs
-            task = &PS2_Keyboard::_respond_leds_1;
+            await_call(readByte,    &pt3->pt2.pt, leds);
+            await_call(ack,         &pt3->pt2.pt);
         }
         else if (cmd != 0) {
             // unknown command
@@ -166,7 +136,7 @@ struct PS2_Keyboard : PS2
         }
         async_end;
     }
-    async _task(Async3 *pt3)
+    async task(Async3 *pt3)
     {
         if (!async_done(pt3)) return _respond(pt3);
         if (data_pin.isLow()) {
