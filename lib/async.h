@@ -115,9 +115,10 @@ struct Async9 { unsigned _async_k; Async8 pt8; };
 #define async_exit {*_async_k = ASYNC_DONE; return ASYNC_DONE;}
 
 /*
- * Initialize a new async computation
+ * Initialize/reset a new async computation
  */
-#define async_init(state) ((state)->_async_k=ASYNC_INIT)
+#define async_init(state)  ((state)->_async_k=ASYNC_INIT)
+#define async_reset(state) ((state)->_async_k=ASYNC_DONE)
 
 /*
  * Check if async subroutine is done
