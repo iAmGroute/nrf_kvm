@@ -3,7 +3,8 @@
 #include "Common.h"
 #include <lib/System/GPIO.h>
 #include <lib/System/Peripherals/UART.h>
-#include "PS2.h"
+#include "PS2_Mouse.h"
+#include "PS2_Keyboard.h"
 
 namespace Board {
     using namespace System;
@@ -24,8 +25,8 @@ namespace Board {
         Pin {PinNumber::P0_13}
     };
 
-    Interface_PS2 keyboard { Pin_Keyboard_Clock, Pin_Keyboard_Data };
-    Interface_PS2 mouse    { Pin_Mouse_Clock,    Pin_Mouse_Data };
+    PS2_Keyboard keyboard { Pin_Keyboard_Clock, Pin_Keyboard_Data };
+    PS2_Mouse    mouse    { Pin_Mouse_Clock,    Pin_Mouse_Data };
 
     u8 currentChannel = 0;
 
