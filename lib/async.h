@@ -34,6 +34,8 @@
  *
  */
 
+// *** Some modifications made ***
+
 /*
  * = Stackless Async Subroutines =
  *
@@ -59,22 +61,23 @@
  *    These must be changed into non-blocking calls that test a condition.
  */
 
-#include <limits.h>
-
 /*
  * The async computation status
  */
 typedef enum ASYNC_EVT { ASYNC_INIT = 0, ASYNC_CONT = ASYNC_INIT, ASYNC_DONE = 1 } async;
 
 /*
- * Declare the async state
- */
-#define async_state unsigned _async_k
-
-/*
  * Core async structure, optional to use.
  */
-struct async { async_state; };
+struct Async  { unsigned _async_k; };
+struct Async2 { unsigned _async_k; Async  pt; };
+struct Async3 { unsigned _async_k; Async2 pt2; };
+struct Async4 { unsigned _async_k; Async3 pt3; };
+struct Async5 { unsigned _async_k; Async4 pt4; };
+struct Async6 { unsigned _async_k; Async5 pt5; };
+struct Async7 { unsigned _async_k; Async6 pt6; };
+struct Async8 { unsigned _async_k; Async7 pt7; };
+struct Async9 { unsigned _async_k; Async8 pt8; };
 
 /*
  * Mark the start of an async subroutine
@@ -109,22 +112,21 @@ struct async { async_state; };
 /*
  * Exit the current async subroutine
  */
-#define async_exit *_async_k = ASYNC_DONE; return ASYNC_DONE
+#define async_exit {*_async_k = ASYNC_DONE; return ASYNC_DONE;}
 
 /*
  * Initialize a new async computation
  */
-#define async_init(state) (state)->_async_k=ASYNC_INIT
+#define async_init(state) ((state)->_async_k=ASYNC_INIT)
 
 /*
  * Check if async subroutine is done
  */
-#define async_done(state) (state)->_async_k==ASYNC_DONE
+#define async_done(state) ((state)->_async_k==ASYNC_DONE)
 
 /*
- * Resume a running async computation and check for completion (optional)
+ * Like await, but for an async function
  *
- * Calling the function itself will return true if the async call is complete,
- * or false if it's still in progress, so this macro is merely a minor optimization.
+ * Will initialize the state given, before awaiting the function.
  */
-#define async_call(f, state) (async_done(state) || (f)(state))
+#define await_call(f, state, ...) async_init(state); await((f)(state, ##__VA_ARGS__))
