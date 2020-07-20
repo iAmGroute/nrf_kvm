@@ -1,5 +1,4 @@
 
-bool keepChannel = false;
 
 #include "Common.h"
 #include "Board.h"
@@ -27,8 +26,8 @@ s8 ms_packets[][3] = {
 u8 kb_packetIndex = 0;
 u8 ms_packetIndex = 0;
 
-Async3 pt3_kb;
-Async3 pt3_ms;
+Async3 state_kb;
+Async3 state_ms;
 
 int main()
 {
@@ -44,13 +43,15 @@ int main()
     p('\n');
 
     while (1) {
-        u8 k = 0;
+        u8 k_kb = 0;
+        u8 k_ms = 0;
         for (u8 i = 0; i < 4; i++) {
+            async_reset(&state_kb);
+            async_reset(&state_ms);
             Board::setChannel(i);
             nrf_delay_us(50000);
             // Board::keyboard.reset();
             // Board::mouse.reset();
-            keepChannel = true;
             while (true) {
                 if (Board::Pin_Switch.isLow()) {
                     nrf_delay_us(250000);
@@ -59,25 +60,21 @@ int main()
                     break;
                 }
                 nrf_delay_us(500);
-                while (1) {
-                    call(Board::keyboard, Board::keyboard.task)(&pt3_kb);
-                    call(Board::mouse,    Board::mouse.task   )(&pt3_ms);
-                }
-                if (k++ == 0 and false) {
-                    {
-                        auto p = kb_packets[kb_packetIndex];
-                        if (Board::keyboard.sendCode(p[0])) {
-                            if (p[1] != 0) Board::keyboard.sendCode(p[1]);
-                            kb_packetIndex += 1;
-                            if (kb_packetIndex >= asize(kb_packets)) kb_packetIndex = 0;
-                        }
+                bool ok_kb = Board::keyboard.task(&state_kb);
+                bool ok_ms = Board::   mouse.task(&state_ms);
+                if (ok_kb and k_kb++ == 0) {
+                    auto p = kb_packets[kb_packetIndex];
+                    if (Board::keyboard.sendCode(p[0])) {
+                        if (p[1] != 0) Board::keyboard.sendCode(p[1]);
+                        kb_packetIndex += 1;
+                        if (kb_packetIndex >= asize(kb_packets)) kb_packetIndex = 0;
                     }
-                    {
-                        auto p = ms_packets[ms_packetIndex];
-                        if (Board::mouse.sendPacket((u8)p[0], p[1], p[2])) {
-                            ms_packetIndex += 1;
-                            if (ms_packetIndex >= asize(ms_packets)) ms_packetIndex = 0;
-                        }
+                }
+                if (ok_ms and k_ms++ == 0) {
+                    auto p = ms_packets[ms_packetIndex];
+                    if (Board::mouse.sendPacket((u8)p[0], p[1], p[2])) {
+                        ms_packetIndex += 1;
+                        if (ms_packetIndex >= asize(ms_packets)) ms_packetIndex = 0;
                     }
                 }
             }
