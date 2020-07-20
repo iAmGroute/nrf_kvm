@@ -80,15 +80,29 @@ struct PS2
         pulse();
         return data_pin.isHigh() ? 1 : 0;
     }
+    bool _host_is_ready(u8 &ok)
+    {
+        bool a = data_pin.isLow();
+        if (a) {
+            // Host is ready to send us a byte
+            ok = 1;
+            return true;
+        }
+        bool b = clock_pin.isHigh();
+        if (b) {
+            // Host wants us to abort the read
+            ok = 0;
+            return true;
+        }
+        // Host is still processing
+        return false;
+    }
     async readByte(Async *pt, u8 &res)
     {
         async_begin(pt);
         p('r');
-        await(data_pin.isLow() or clock_pin.isHigh());
-        if (clock_pin.isHigh()) {
-            res = 0;
-            async_exit;
-        }
+        await(_host_is_ready(res));
+        if (res == 0) async_exit;
         p('+');
         await(clock_pin.isHigh());
         p('+');
